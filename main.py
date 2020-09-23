@@ -1,6 +1,6 @@
-from model import Weights 
-
-
+from model import Weights, Encoder, Decoder
+from utils import xavier, latent_layer
+import torch
 
 
 if __name__ == "__main__":
@@ -30,7 +30,13 @@ if __name__ == "__main__":
             "b4": Weights("bias_matrix_decoder_hidden",[LATENT_SPACE_DIM, NN_DIM]),
             "b5": Weights("bias_decoder",[NN_DIM, IMAGE_DIM])
         }
-    print(weight_list)
-    print(bias_list)
+    
 
+    INPUT_IMAGE = torch.randn(NN_DIM)
+    mean, std = Encoder(INPUT_IMAGE).encode(weight_list, bias_list)
+
+    print(mean.size())
+    print(std.size())
+
+    
     
