@@ -8,16 +8,17 @@ class Weights:
     def __init__(self, name, dimension, initialization=xavier):
         self.name = name
         self.dimension = dimension
-        self.initialization = initialization
-        self.weights = None
+        self.initialization = None
+        self.weights = torch.empty(dimension, requires_grad=True)
         self.flag = 0
+        
     
     def __repr__(self):
         return self.name
 
     def _get_weight(self):
         if self.flag == 0:
-            self.weights = Variable(self.initialization(self.dimension), requires_grad=True)
+            self.weights = torch.nn.init.xavier_normal_(self.weights)
             self.flag = 1
 
         return self.weights
