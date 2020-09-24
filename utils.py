@@ -7,8 +7,8 @@ def xavier(in_shape):
     val = torch.randn(in_shape) * (1/np.sqrt(in_shape[0]/2))
     return val
 
-def latent_layer(mean_layer, std_layer):
-    epsilon = torch.randn(std_layer.size)
+def latent_space(mean_layer, std_layer):
+    epsilon = torch.randn(std_layer.size())
     return mean_layer + torch.exp(0.5 * std_layer) * epsilon 
 
 if __name__ == "__main__":
