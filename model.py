@@ -1,5 +1,5 @@
 from torch.autograd import Variable
-from utils import xavier, latent_layer
+from utils import xavier, latent_space
 import torch
 
 
@@ -10,18 +10,28 @@ class Weights:
         self.dimension = dimension
         self.initialization = initialization
         self.weights = None
+        self.flag = 0
     
     def __repr__(self):
         return self.name
 
     def _get_weight(self):
-        self.weights = Variable(self.initialization(self.dimension), requires_grad=True)
+        if self.flag == 0:
+            self.weights = Variable(self.initialization(self.dimension), requires_grad=True)
+            self.flag = 1
+
         return self.weights
 
     def __mul__(self, other):
-        return torch.matmul(self._get_weight(), other)
+        return torch.matmul(other, self._get_weight())
 
     def __add__(self, other):
+        return torch.add(self._get_weight(), other)
+
+    def __rmul__(self, other):
+        return torch.matmul(other, self._get_weight())
+
+    def __radd__(self, other):
         return torch.add(self._get_weight(), other)
 
 
@@ -31,7 +41,7 @@ class Encoder:
         self.input = Variable(input_image, requires_grad = True)
         
     def encode(self, weights, biases):
-        encoder_layer = self.input * weights["w1"]._get_weight() + biases["b1"]._get_weight()
+        encoder_layer = self.input * weights["w1"] + biases["b1"]
         encoder_layer = torch.tanh(encoder_layer)
         mean_layer = encoder_layer * weights["w2"] + biases["b2"]
         std_dev_layer = encoder_layer * weights["w3"] + biases["b3"]
@@ -41,15 +51,15 @@ class Encoder:
 
 class Decoder:
     
-    def __init__(self, latent_space, weights, biases):
-        self.latent_space = latent_space
+    def __init__(self, latent_space):
+        self.latent_space = Variable(latent_space, requires_grad = True)
 
 
-    def decode(self):
+    def decode(self, weights, biases):
         decoder_layer = self.latent_space * weights["w4"] + biases["b4"]
         decoder_layer = torch.tanh(decoder_layer)
         decoder_output = decoder_layer * weights["w5"] + biases["b5"]
-        decoder_output = torch.sigmoid(decoder_layer)
+        decoder_output = torch.sigmoid(decoder_output)
 
         return decoder_output
 
@@ -60,9 +70,9 @@ if __name__ == "__main__" :
 
     input_image = Variable(torch.randn(10,15))
     w1 = Weights("weight_matrix_encoder_hidden", [IMAGE_DIM, NN_DIM])
-
+    print(input_image*w1)
     
-    print(w1._get_weight().mean(axis=1))
+    
 
 
 
