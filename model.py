@@ -9,7 +9,7 @@ class Weights:
         self.name = name
         self.dimension = dimension
         self.initialization = None
-        self.weights = torch.empty(dimension, requires_grad=True)
+        self.weights = torch.empty(dimension, requires_grad=True).to('cuda')
         self.flag = 0
         
     
@@ -19,6 +19,7 @@ class Weights:
     def _get_weight(self):
         if self.flag == 0:
             self.weights = torch.nn.init.xavier_normal_(self.weights)
+            self.weights.retain_grad()
             self.flag = 1
 
         return self.weights
@@ -39,13 +40,15 @@ class Weights:
 class Encoder:
 
     def __init__(self, input_image):
-        self.input = Variable(input_image, requires_grad = True)
+        self.input = Variable(input_image, requires_grad = True).to('cuda')
         
     def encode(self, weights, biases):
         encoder_layer = self.input * weights["w1"] + biases["b1"]
         encoder_layer = torch.tanh(encoder_layer)
         mean_layer = encoder_layer * weights["w2"] + biases["b2"]
+        mean_layer.to('cuda')
         std_dev_layer = encoder_layer * weights["w3"] + biases["b3"]
+        std_dev_layer.to('cuda')
 
         return mean_layer, std_dev_layer
 
@@ -53,8 +56,13 @@ class Encoder:
 class Decoder:
     
     def __init__(self, latent_space):
-        self.latent_space = Variable(latent_space, requires_grad = True)
+        
+        if str(type(latent_space)) == "<class 'numpy.ndarray'>":
+            latent_space = torch.from_numpy(latent_space).float()
+            self.latent_space = Variable(latent_space, requires_grad = False)
 
+        else:
+            self.latent_space = Variable(latent_space, requires_grad = True).to('cuda')
 
     def decode(self, weights, biases):
         decoder_layer = self.latent_space * weights["w4"] + biases["b4"]

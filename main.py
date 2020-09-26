@@ -5,6 +5,8 @@ import torch
 import torchvision.datasets as datasets
 import torchvision.transforms as transforms
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import numpy as np 
 
 def forward_propogate(INPUT_IMAGE, weights, biases):
 
@@ -15,11 +17,8 @@ def forward_propogate(INPUT_IMAGE, weights, biases):
         return decoder_output, mean, std
 
 def load_mnist():
-    transform = transforms.Compose([transforms.ToTensor(),
-                              transforms.Normalize((0.5,), (0.5,)),
-                              ])
-
-    mnist_trainset = datasets.MNIST(root='./', train=True, download=False, transform=transform)
+    transform = transforms.Compose([transforms.ToTensor()])
+    mnist_trainset = datasets.MNIST(root='./', train=True, download=True, transform=transform)
     trainloader = torch.utils.data.DataLoader(mnist_trainset, batch_size = 32, shuffle = True)
     return trainloader
         
@@ -28,9 +27,9 @@ if __name__ == "__main__":
 
     trainloader = load_mnist()
     
-    learning_rate = 0.00001
-    epochs = 30000
-    batch_size = 32
+    learning_rate = 0.0001
+    epochs = 150
+    batch_size = 64
 
     IMAGE_DIM = 28 * 28
     NN_DIM = 512
@@ -59,33 +58,62 @@ if __name__ == "__main__":
         }
     
 
-    INPUT_IMAGE = torch.rand(32,IMAGE_DIM)
+    
 
-    for i in range(1,epochs):
+    for i in tqdm(range(1,epochs)):
 
-        for batch, _ in tqdm(trainloader):
-            batch = batch.view(batch.shape[0], -1)
+        print(f"Epoch {i}")
+        if i > 50:
+            learning_rate = 0.00001
+        if i > 100:
+            learning_rate = 0.000001
+
+        for batch, _ in trainloader:
+            batch = batch.view(batch.shape[0], -1).to('cuda')
             
             decoder_output, mean, std = forward_propogate(batch, weight_list, bias_list)
-            total_loss = reconstruction_loss(batch, decoder_output) +  kl_divergence_loss(mean, std)
+            total_loss = reconstruction_loss(batch, decoder_output) #kl_divergence_loss(mean, std)
+            total_loss.to('cuda')
             total_loss.sum().backward()
             
-            #print(weight_list["w1"]._get_weight().grad.data)
+            
             for weight in weight_list:
-                #print(weight_list[weight])
                 weight_list[weight]._get_weight().data = weight_list[weight]._get_weight().data - learning_rate * weight_list[weight]._get_weight().grad.data
+                weight_list[weight]._get_weight().grad.data.zero_()
+                
 
             for bias in bias_list:
                 bias_list[bias]._get_weight().data = bias_list[bias]._get_weight().data - learning_rate * bias_list[bias]._get_weight().grad.data
-        
-           
-
-            for weight in weight_list:
-                weight_list[weight]._get_weight().grad.data.zero_()
-
-            for bias in bias_list:
                 bias_list[bias]._get_weight().grad.data.zero_()
+        
 
         if i % 2 == 0:
             print("Total Loss : ", total_loss.sum().data)
-        
+
+    
+    
+    # Testing
+    
+    n = 20
+    x_limit = np.linspace(-2,2,n)
+    y_limit = np.linspace(-2,2,n)
+
+    empty_image = np.empty((28*n,28*n))
+
+
+    for i, zi in enumerate(x_limit):
+        for j, pi in enumerate(y_limit):
+            generated_latent_layer=  np.array([[zi, pi]] * batch_size)
+            Decoder_Noisy = Decoder(generated_latent_layer)
+            generated_image = Decoder_Noisy.decode(weight_list, bias_list)
+            generated_image = generated_image.detach().numpy()
+            empty_image[(n-i-1)*28 : (n-i)*28, j*28:(j+1)*28] = generated_image[0].reshape(28,28)
+
+    plt.figure(figsize=(8,10))
+    X, Y = np.meshgrid(x_limit, y_limit)
+    plt.imshow(empty_image, origin="upper", cmap="gray")
+    plt.grid('False')
+    plt.show()
+
+
+
