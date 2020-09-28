@@ -9,8 +9,8 @@ def reconstruction_loss(original_image, reconstructed_image):
 
 def kl_divergence_loss(mean_layer, std_layer):
     """Difference between two PDFs, acts as regularizer."""
-    l = torch.exp(std_layer) + torch.square(mean_layer) - 1 - std_layer
-    l = 0.5 * torch.mean(l, axis=1)
+    l = torch.exp(std_layer) + torch.square(mean_layer) - 1.0 - std_layer
+    l = 0.5 * torch.sum(l, axis=1)
     return l
 
 def network_loss(reconstruction_loss, kl_divergence_loss, alpha=1, beta=1):

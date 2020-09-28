@@ -1,5 +1,5 @@
 from model import Weights, Encoder, Decoder
-from utils import xavier, latent_space
+from utils import latent_space
 from loss import reconstruction_loss, kl_divergence_loss, network_loss
 import torch
 import torchvision.datasets as datasets
@@ -35,8 +35,8 @@ if __name__ == "__main__":
     NN_DIM = 512
     LATENT_SPACE_DIM = 2
 
-    ALPHA = 0
-    BETA = 0 
+    ALPHA = 1 
+    BETA = 1
 
 
     # input is 1 x 784
@@ -63,37 +63,26 @@ if __name__ == "__main__":
     for i in tqdm(range(1,epochs)):
 
         print(f"Epoch {i}")
-        if i > 50:
-            learning_rate = 0.00001
-        if i > 100:
-            learning_rate = 0.000001
-
+    
         for batch, _ in trainloader:
-            batch = batch.view(batch.shape[0], -1).to('cuda')
             
+            batch = batch.view(batch.shape[0], -1)
             decoder_output, mean, std = forward_propogate(batch, weight_list, bias_list)
-            total_loss = reconstruction_loss(batch, decoder_output) #kl_divergence_loss(mean, std)
-            total_loss.to('cuda')
+            total_loss = ALPHA * reconstruction_loss(batch, decoder_output) + BETA * kl_divergence_loss(mean, std)
             total_loss.sum().backward()
-            
-            
+                        
             for weight in weight_list:
                 weight_list[weight]._get_weight().data = weight_list[weight]._get_weight().data - learning_rate * weight_list[weight]._get_weight().grad.data
                 weight_list[weight]._get_weight().grad.data.zero_()
                 
-
             for bias in bias_list:
                 bias_list[bias]._get_weight().data = bias_list[bias]._get_weight().data - learning_rate * bias_list[bias]._get_weight().grad.data
                 bias_list[bias]._get_weight().grad.data.zero_()
         
-
         if i % 2 == 0:
             print("Total Loss : ", total_loss.sum().data)
 
-    
-    
-    # Testing
-    
+    # Testing    
     n = 20
     x_limit = np.linspace(-2,2,n)
     y_limit = np.linspace(-2,2,n)
